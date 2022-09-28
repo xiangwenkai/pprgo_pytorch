@@ -128,3 +128,19 @@ def get_reddit(dataset_path, seed, ntrain_div_classes):
 
 def get_max_memory_bytes():
     return 1024 * resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+
+
+def clustering_coefficient(adj_matrix, indx):
+    coef = []
+    for v in indx:
+        neighbors = adj_matrix.indices[adj_matrix.indptr[v]:adj_matrix.indptr[v+1]]
+        l = len(neighbors)
+        if l <= 1: return 0.0
+        links = 0.0
+        for i in range(l-1):
+            for j in range(i, l):
+                w = neighbors[i]
+                u = neighbors[j]
+                if u in adj_matrix.indices[adj_matrix.indptr[w]:adj_matrix.indptr[w+1]]: links += 1.
+        coef.append(2.0*links/(l*(l-1)))
+    return coef
