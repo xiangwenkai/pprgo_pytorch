@@ -4,6 +4,8 @@ import scipy.sparse as sp
 import sklearn
 from torch_geometric.datasets import Reddit
 from .sparsegraph import load_from_npz
+import random
+import numba
 
 
 class SparseRowIndexer:
@@ -134,13 +136,27 @@ def clustering_coefficient(adj_matrix, indx):
     coef = []
     for v in indx:
         neighbors = adj_matrix.indices[adj_matrix.indptr[v]:adj_matrix.indptr[v+1]]
+        if v in neighbors:
+            neighbors = np.delete(neighbors, np.argwhere(neighbors == v))
         l = len(neighbors)
-        if l <= 1: return 0.0
+        if l <= 1:
+            coef.append(0.)
+            continue
+
         links = 0.0
-        for i in range(l-1):
-            for j in range(i, l):
-                w = neighbors[i]
-                u = neighbors[j]
-                if u in adj_matrix.indices[adj_matrix.indptr[w]:adj_matrix.indptr[w+1]]: links += 1.
-        coef.append(2.0*links/(l*(l-1)))
+        if l <= 35:
+            for i in range(l-1):
+                for j in range(i, l):
+                    w = neighbors[i]
+                    u = neighbors[j]
+                    if u in adj_matrix.indices[adj_matrix.indptr[w]:adj_matrix.indptr[w+1]]:
+                        links += 1.
+            coef.append(2.0*links/(l*(l-1)))
+        else:
+            for _ in range(1000):
+                neighbors_list = list(neighbors)
+                w, u = random.sample(neighbors_list, 2)
+                if u in adj_matrix.indices[adj_matrix.indptr[w]:adj_matrix.indptr[w + 1]]:
+                    links += 1.
+            coef.append(links / 1000.)
     return coef
