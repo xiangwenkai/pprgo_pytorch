@@ -2,7 +2,7 @@ import resource
 import numpy as np
 import scipy.sparse as sp
 import sklearn
-from torch_geometric.datasets import Reddit
+from torch_geometric.datasets import Reddit, Yelp
 from .sparsegraph import load_from_npz
 import random
 import numba
@@ -127,6 +127,32 @@ def get_reddit(dataset_path, seed, ntrain_div_classes):
                         dtype=np.float32)
     labels = data.y.numpy()
     return adj_matrix, attr_matrix, labels, train_idx, val_idx, test_idx
+
+
+def get_pygdata(name, dataset_path, seed, ntrain_div_classes):
+    if name == 'reddit':
+        dataset = Reddit(dataset_path)
+    if name == 'yelp':
+        dataset = Yelp(dataset_path)
+    data = dataset[0]
+
+    n, d = data.x.shape
+
+    num_classes = data.y.max() + 1
+    n_train = num_classes * ntrain_div_classes
+    n_val = n_train * 10
+    train_idx, val_idx, test_idx = split_random(seed, n, n_train, n_val)
+
+    attr_matrix = sp.csr_matrix(data['x'], dtype=np.float32)
+    attr_matrix = SparseRowIndexer(attr_matrix)
+
+    edges = data.edge_index.T
+    adj_matrix = sp.csr_matrix((np.ones(edges.shape[0]), (edges[:, 0], edges[:, 1])),
+                        shape=(data.y.shape[0], data.y.shape[0]),
+                        dtype=np.float32)
+    labels = data.y.numpy()
+    return adj_matrix, attr_matrix, labels, train_idx, val_idx, test_idx
+
 
 def get_max_memory_bytes():
     return 1024 * resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
